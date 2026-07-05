@@ -9,6 +9,10 @@ DISCORD_APPLICATION_ID = os.environ["DISCORD_APPLICATION_ID"]
 
 MIRROR_WEBHOOK_URL = os.environ.get("MIRROR_WEBHOOK_URL", "")
 
+# Comma-separated list of allowed dashboard origins, e.g. your Vercel URL.
+# Defaults to "*" so local dev (any localhost port) keeps working out of the box.
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "*").split(",")]
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local.db")
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
