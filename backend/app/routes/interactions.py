@@ -56,13 +56,22 @@ def mirror_for_guild(db: Session, guild_id: str | None, text: str) -> bool:
     )
 
 
+DEFAULT_REPLY_TEMPLATES = {
+    "status": "✅ All systems operational — bot is online and responding normally.",
+    "report": '📝 Thanks, I\'ve logged your report: "{text}"',
+}
+
+
 def get_config(db: Session, command_name: str, guild_id: str | None = None) -> CommandConfig:
-    """Get or create CommandConfig, respecting per-guild isolation."""
+    """Get or create CommandConfig, respecting per-guild isolation. New
+    commands get a sensible default reply for that command name rather than
+    a generic placeholder, though the admin can always override it."""
     cfg = db.query(CommandConfig).filter_by(
         command_name=command_name, guild_id=guild_id
     ).first()
     if not cfg:
-        cfg = CommandConfig(command_name=command_name, guild_id=guild_id)
+        default_template = DEFAULT_REPLY_TEMPLATES.get(command_name, "Got it: {text}")
+        cfg = CommandConfig(command_name=command_name, guild_id=guild_id, reply_template=default_template)
         db.add(cfg)
         db.commit()
         db.refresh(cfg)
