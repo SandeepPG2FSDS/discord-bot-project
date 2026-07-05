@@ -88,19 +88,33 @@ See `backend/.env.example`. Summary:
 
 ## Deployment
 
-- **Backend**: deployed to Render (free tier). Build command
-  `pip install -r requirements.txt`, start command
-  `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Environment variables
-  set in Render's dashboard, not committed to the repo.
-- **Frontend**: deployed to Vercel/Netlify (free tier), with `VITE_API_URL`
-  pointed at the Render backend URL.
+- **Backend**: deployed to Render (free tier). Root directory `backend`,
+  build command `pip install -r requirements.txt`, start command
+  `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Python pinned to
+  3.11.9 via `backend/.python-version` (Render's newer default Python
+  breaks `psycopg2-binary`'s compiled extension). Environment variables set
+  in Render's dashboard, not committed to the repo.
+- **Frontend**: deployed to Vercel (free tier). Root directory `frontend`,
+  framework preset Vite, with `VITE_API_URL` pointed at the Render backend
+  URL (this is a build-time variable — redeploy after changing it).
 - **Database**: Neon free-tier Postgres, connection string set as
-  `DATABASE_URL` on the backend.
+  `DATABASE_URL` on the backend. `pool_pre_ping=True` + `pool_recycle=300`
+  on the SQLAlchemy engine so a connection Neon closed for being idle gets
+  transparently replaced instead of surfacing as a request failure.
+- **CORS**: `ALLOWED_ORIGINS` on the backend is set to the Vercel URL in
+  production (defaults to `*` for local dev).
 - **Discord Interactions Endpoint URL**: set to
-  `https://<your-render-app>.onrender.com/interactions`.
+  `https://<your-render-app>.onrender.com/interactions` via the Discord API
+  (`PATCH /applications/@me` with `interactions_endpoint_url`) — Discord
+  PINGs the URL immediately and only accepts the change if it gets a
+  correctly-signed PONG back.
 
-Deployed URL: _fill in after deploying_
-Repo: _fill in_
+**Deployed URL**: https://discord-bot-project-one.vercel.app
+**Backend API**: https://discord-bot-project-aar8.onrender.com
+**Repo**: https://github.com/SandeepPG2FSDS/discord-bot-project
+
+Note: Render's free tier spins down after inactivity, so the first request
+after a while can take 30-60s to wake up — that's expected, not a bug.
 
 ## Testing it
 
