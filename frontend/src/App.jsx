@@ -117,13 +117,14 @@ function LogsTable({ token }) {
           <table className="log-table">
             <thead>
               <tr>
-                <th>Time</th><th>User</th><th>Command</th><th>Text</th>
+                <th>Date</th><th>Time</th><th>User</th><th>Command</th><th>Text</th>
                 <th>Action</th><th>Status</th><th>Mirrored</th><th>AI</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id}>
+                  <td>{new Date(l.created_at).toLocaleDateString()}</td>
                   <td>{new Date(l.created_at).toLocaleTimeString()}</td>
                   <td>{l.user_tag}</td>
                   <td>/{l.command_name}</td>

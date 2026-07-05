@@ -44,11 +44,24 @@ def safe_dedup_and_log(db: Session, interaction_id: str, **log_fields) -> tuple[
         return None, False
 
 
-def mirror_for_guild(db: Session, guild_id: str | None, text: str) -> bool:
+def mirror_for_guild(db: Session, guild_id: str | None, text: str, origin_channel_id: str | None = None) -> bool:
     """Routes the mirror notification to whatever the admin connected for
     this guild (a Discord channel or a Slack webhook); falls back to the
-    global MIRROR_WEBHOOK_URL env var if the guild hasn't been connected."""
+    global MIRROR_WEBHOOK_URL env var if the guild hasn't been connected.
+
+    Skips Discord-channel mirroring when the mirror channel is the same
+    channel the command was actually used in — the human already saw the
+    reply there, so echoing a second raw log line right under it is just
+    noise, not a mirror."""
     server = db.query(ServerConfig).filter_by(guild_id=guild_id).first() if guild_id else None
+    if (
+        server
+        and not server.slack_webhook_url
+        and server.mirror_channel_id
+        and origin_channel_id
+        and server.mirror_channel_id == origin_channel_id
+    ):
+        return False
     return send_mirror_notification(
         text,
         slack_webhook_url=server.slack_webhook_url if server else None,
@@ -59,6 +72,12 @@ def mirror_for_guild(db: Session, guild_id: str | None, text: str) -> bool:
 DEFAULT_REPLY_TEMPLATES = {
     "status": "✅ All systems operational — bot is online and responding normally.",
     "report": '📝 Thanks, I\'ve logged your report: "{text}"',
+    "help": (
+        "🤖 **Available commands**\n"
+        "• `/status` — check that the bot is online\n"
+        "• `/report <text>` — submit a report; it's logged and shared with the team\n"
+        "• `/help` — show this message"
+    ),
 }
 
 
@@ -107,9 +126,11 @@ def process_command_in_background(interaction_id: str, interaction_token: str, c
 
         mirror_ok = False
         if cfg.mirror_enabled:
-            mirror_ok = mirror_for_guild(
-                db, guild_id, f"[{command_name}] from guild {guild_id}: {command_text} -> {reply_text}"
-            )
+            mirror_text = f"📨 **/{command_name}** used by **{log.user_tag}**"
+            if command_text:
+                mirror_text += f': "{command_text}"'
+            mirror_text += f"\n↳ {reply_text}"
+            mirror_ok = mirror_for_guild(db, guild_id, mirror_text, origin_channel_id=log.channel_id)
 
         log.ai_summary = ai_summary
         log.mirror_delivered = mirror_ok
@@ -163,9 +184,11 @@ def process_modal_submit_in_background(interaction_id: str, interaction_token: s
 
         mirror_ok = False
         if cfg.mirror_enabled:
-            mirror_ok = mirror_for_guild(
-                db, guild_id, f"[MODAL {custom_id}] from guild {guild_id}: {modal_text} -> {reply_text}"
-            )
+            mirror_text = f"📨 **{custom_id}** submitted by **{log.user_tag}**"
+            if modal_text:
+                mirror_text += f': "{modal_text}"'
+            mirror_text += f"\n↳ {reply_text}"
+            mirror_ok = mirror_for_guild(db, guild_id, mirror_text, origin_channel_id=log.channel_id)
 
         log.ai_summary = ai_summary
         log.mirror_delivered = mirror_ok

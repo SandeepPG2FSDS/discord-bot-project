@@ -26,6 +26,10 @@ COMMANDS = [
         "name": "status",
         "description": "Check the bot's status",
     },
+    {
+        "name": "help",
+        "description": "List available commands",
+    },
 ]
 
 URL = f"https://discord.com/api/v10/applications/{DISCORD_APPLICATION_ID}/commands"
